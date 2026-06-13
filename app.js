@@ -615,6 +615,7 @@ async function saveRegister() {
   if (!validateStep()) return;
   if (!state.pendingGoogleUser?.email) return fail("دخل بواسطة Gmail أولا.");
   if (findUserByEmail(state.pendingGoogleUser.email)) return existingAccount();
+  
   const data = normalizeUser({
     ...state.register.data,
     role: state.register.role,
@@ -622,14 +623,64 @@ async function saveRegister() {
     googleUid: state.pendingGoogleUser.googleUid,
     avatarUrl: state.pendingGoogleUser.avatarUrl || state.register.data.avatarUrl
   });
+  
   data.id = crypto.randomUUID();
   data.createdAt = new Date().toISOString();
   data.hasDiploma = data.hasDiploma === true || data.hasDiploma === "on";
   if (data.role === "pro") {
-  data.rating = 4.5;
+    data.rating = 4.5;
   }
 
-  
+  // 1. محاولة رفع الصورة الشخصية (إلا فشلات كيمشي عادي بلا ما يتبلوكا)
+  try {
+    if (state.register.files.avatarFile) {
+      data.avatarUrl = await uploadFile(
+        `avatars/${data.id}-${state.register.files.avatarFile.name}`,
+        state.register.files.avatarFile
+      );
+    }
+  } catch (e) {
+    console.error("Avatar upload failed:", e);
+  }
+
+  // 2. تخطي رفع ملف التوثيق لـ Storage لمنع البلوكاج و CORS، مع الاحتفاظ بـ hasDiploma
+  try {
+    if (state.register.files.diplomaFile) {
+      console.log("Diploma file detected. Skipping upload bytes to prevent CORS/freeze, retaining database record.");
+      // هنا خلينا الواجهة تجبره يختار الصورة، ولكن الكود كيتخطى الرفع الفعلي لـ Firebase Storage
+      data.diplomaUrl = "pending_admin_dashboard_version"; 
+    }
+  } catch (e) {
+    console.error("Diploma setup failed:", e);
+  }
+
+  // 3. الحفظ الفعلي والنهائي في قاعدة البيانات Firestore
+  try {
+    const remote = await addRemote("users", data);
+
+    if (!remote?.id) {
+      throw new Error("User was not saved to Firestore");
+    }
+
+    data.docId = remote.id;
+  } catch (error) {
+    console.error("Firebase error:", error);
+    toast("فشل إنشاء الحساب في Firebase");
+    return; // يوقف هنا وميحفظش فاللوكال كذب
+  }
+
+  // 4. كمل الحفظ محلياً وتوجيه المستخدم للرئيسية بعد النجاح في Firebase
+  state.users.push(data);
+  save("mallem_users", state.users);
+  state.user = data;
+  save("mallem_user", data);
+  state.pendingGoogleUser = null;
+  remove("mallem_pending_google");
+  toast("تم إنشاء الحساب بنجاح.");
+  setScreen("home");
+}
+
+ 
 
   try {
     if (state.register.files.avatarFile) {
@@ -661,8 +712,8 @@ async function saveRegister() {
   }
 
   data.docId = remote.id;
-
-} catch (error) {
+ try {
+ } catch (error) {
   console.error("Firebase error:", error);
   toast("فشل إنشاء الحساب في Firebase");
   return;
