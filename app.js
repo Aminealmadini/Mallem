@@ -625,7 +625,9 @@ async function saveRegister() {
   data.id = crypto.randomUUID();
   data.createdAt = new Date().toISOString();
   data.hasDiploma = data.hasDiploma === true || data.hasDiploma === "on";
-  data.rating = data.role === "pro" ? 4.5 : undefined;
+  if (data.role === "pro") {
+  data.rating = 4.5;
+  }
 
   try {
 
