@@ -631,30 +631,28 @@ async function saveRegister() {
     data.rating = 4.5;
   }
 
-  // 1. محاولة رفع الصورة الشخصية (إلا فشلات كيمشي عادي بلا ما يتبلوكا)
-  try {
-    if (state.register.files.avatarFile) {
-      data.avatarUrl = await uploadFile(
+  // 1. محاولة رفع الصورة الشخصية (مع حماية كاملة ضد الـ AdBlocker)
+  if (state.register.files && state.register.files.avatarFile) {
+    try {
+      // غديرو حد أقصى للانتظار (Timeout) ديال 3 ثواني، إلا تعطل الحجيب كيدوز بلا بيها
+      const uploadPromise = uploadFile(
         `avatars/${data.id}-${state.register.files.avatarFile.name}`,
         state.register.files.avatarFile
       );
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
+      data.avatarUrl = await Promise.race([uploadPromise, timeoutPromise]);
+    } catch (e) {
+      console.warn("Avatar upload skipped or blocked by client:", e);
     }
-  } catch (e) {
-    console.error("Avatar upload failed:", e);
   }
 
-  // 2. تخطي رفع ملف التوثيق لـ Storage لمنع البلوكاج و CORS، مع الاحتفاظ بـ hasDiploma
-  try {
-    if (state.register.files.diplomaFile) {
-      console.log("Diploma file detected. Skipping upload bytes to prevent CORS/freeze, retaining database record.");
-      // هنا خلينا الواجهة تجبره يختار الصورة، ولكن الكود كيتخطى الرفع الفعلي لـ Firebase Storage
-      data.diplomaUrl = "pending_admin_dashboard_version"; 
-    }
-  } catch (e) {
-    console.error("Diploma setup failed:", e);
+  // 2. تخطي رفع ملف التوثيق لـ Storage تماماً لمنع البلوكاج و CORS مع إجبارية الاختيار فالواجهة
+  if (state.register.files && state.register.files.diplomaFile) {
+    console.log("Diploma file verified in view, skipping upload bytes to bypass CORS/AdBlocker freeze.");
+    data.diplomaUrl = "pending_admin_dashboard_version"; 
   }
 
-  // 3. الحفظ الفعلي والنهائي في قاعدة البيانات Firestore
+  // 3. الحفظ الفعلي ف قاعدة البيانات Firestore
   try {
     const remote = await addRemote("users", data);
 
@@ -665,11 +663,12 @@ async function saveRegister() {
     data.docId = remote.id;
   } catch (error) {
     console.error("Firebase error:", error);
-    toast("فشل إنشاء الحساب في Firebase");
-    return; // يوقف هنا وميحفظش فاللوكال كذب
+    // إذا كان الـ AdBlocker كيبلوكي حتى Firestore كاملة، غنبهو المستخدم
+    toast("فشل إنشاء الحساب فـ Firebase. جرب طفي مانع الإعلانات (AdBlocker) إذا مشغلّو.");
+    return;
   }
 
-  // 4. كمل الحفظ محلياً وتوجيه المستخدم للرئيسية بعد النجاح في Firebase
+  // 4. كمل الحفظ محلياً وتوجيه المستخدم
   state.users.push(data);
   save("mallem_users", state.users);
   state.user = data;
