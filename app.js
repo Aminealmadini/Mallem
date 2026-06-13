@@ -629,7 +629,7 @@ async function saveRegister() {
   data.rating = 4.5;
   }
 
-  try {
+  
 
   try {
     if (state.register.files.avatarFile) {
