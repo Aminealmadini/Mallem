@@ -417,7 +417,7 @@ function proCard(pro) {
       <div class="meta">
         <span>★ ${pro.rating || "جديد"}</span>
         <span>${pro.address || ""}</span>
-        ${pro.hasDiploma ? `<span class="badge">موثق بالديبلوم</span>` : `<span class="badge badge-warn">حرفي عادي</span>`}
+        ${pro.hasDiploma ? `<span class="badge">معتمد (قيد المراجعة)</span>` : `<span class="badge badge-warn">حرفي تقليدي</span>`}
       </div>
       <div class="card-actions">
         <button class="btn primary" data-action="call" data-id="${pro.id}" data-value="${pro.phone}">اتصال</button>
@@ -643,12 +643,13 @@ async function saveRegister() {
   }
 
   try {
-    if (state.register.files.diplomaFile) {
-      data.diplomaUrl = await uploadFile(
-        `diplomas/${data.id}-${state.register.files.diplomaFile.name}`,
-        state.register.files.diplomaFile
-      );
-    }
+    /*
+     if (state.register.files.diplomaFile)
+     data.diplomaUrl = await uploadFile(
+     `diplomas/${data.id}-${state.register.files.diplomaFile.name}`,
+     state.register.files.diplomaFile
+     );
+   */
   } catch (e) {
     console.error("Diploma upload failed:", e);
   }
