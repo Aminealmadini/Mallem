@@ -628,14 +628,42 @@ async function saveRegister() {
   data.rating = data.role === "pro" ? 4.5 : undefined;
 
   try {
-    if (state.register.files.avatarFile) data.avatarUrl = await uploadFile(`avatars/${data.id}-${state.register.files.avatarFile.name}`, state.register.files.avatarFile);
-    if (state.register.files.diplomaFile) data.diplomaUrl = await uploadFile(`diplomas/${data.id}-${state.register.files.diplomaFile.name}`, state.register.files.diplomaFile);
-    const remote = await addRemote("users", data);
-    data.docId = remote?.id || data.docId;
-  } catch (error) {
-    console.warn(error);
-    toast("تعذر الحفظ في Firebase، غادي يتحفظ محليا مؤقتا.");
+
+  try {
+    if (state.register.files.avatarFile) {
+      data.avatarUrl = await uploadFile(
+        `avatars/${data.id}-${state.register.files.avatarFile.name}`,
+        state.register.files.avatarFile
+      );
+    }
+  } catch (e) {
+    console.error("Avatar upload failed:", e);
   }
+
+  try {
+    if (state.register.files.diplomaFile) {
+      data.diplomaUrl = await uploadFile(
+        `diplomas/${data.id}-${state.register.files.diplomaFile.name}`,
+        state.register.files.diplomaFile
+      );
+    }
+  } catch (e) {
+    console.error("Diploma upload failed:", e);
+  }
+
+  const remote = await addRemote("users", data);
+
+  if (!remote?.id) {
+    throw new Error("User was not saved to Firestore");
+  }
+
+  data.docId = remote.id;
+
+} catch (error) {
+  console.error("Firebase error:", error);
+  toast("فشل إنشاء الحساب في Firebase");
+  return;
+}
 
   state.users.push(data);
   save("mallem_users", state.users);
