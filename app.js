@@ -1,19 +1,25 @@
-let initializeApp;
-let getFirestore;
-let collection;
-let addDoc;
-let deleteDoc;
-let doc;
-let getDocs;
-let query;
-let updateDoc;
-let where;
-let serverTimestamp;
-let getAuth;
-let GoogleAuthProvider;
-let signInWithRedirect;
-let getRedirectResult;
-let signOut;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDEf4NV_vg8GYX0IhvdNouT4PR2orhD3So",
@@ -180,34 +186,25 @@ function bindNetworkStatus() {
 
 async function initFirebase() {
   if (firebaseReady) return true;
-  if (!state.isOnline) return false;
-  if (firebaseLoading) return firebaseLoading;
-  firebaseLoading = (async () => {
-    try {
-      const [appModule, firestoreModule, authModule] = await Promise.all([
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js")
-      ]);
-      ({ initializeApp } = appModule);
-      ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
-      ({ getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } = authModule);
 
-      const firebaseApp = initializeApp(firebaseConfig);
-      db = getFirestore(firebaseApp);
-      auth = getAuth(firebaseApp);
-      googleProvider = new GoogleAuthProvider();
-      googleProvider.setCustomParameters({ prompt: "select_account" });
-      auth.languageCode = "ar";
-      firebaseReady = true;
-      return true;
-    } catch (error) {
-      console.warn("Firebase unavailable, local mode is active.", error);
-      firebaseLoading = null;
-      return false;
-    }
-  })();
-  return firebaseLoading;
+  try {
+    const firebaseApp = initializeApp(firebaseConfig);
+    db = getFirestore(firebaseApp);
+    auth = getAuth(firebaseApp);
+    googleProvider = new GoogleAuthProvider();
+
+    googleProvider.setCustomParameters({
+      prompt: "select_account"
+    });
+
+    auth.languageCode = "ar";
+    firebaseReady = true;
+
+    return true;
+  } catch (error) {
+    console.warn("Firebase unavailable:", error);
+    return false;
+  }
 }
 
 function render() {
