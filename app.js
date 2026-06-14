@@ -9,10 +9,6 @@ let query;
 let updateDoc;
 let where;
 let serverTimestamp;
-let getStorage;
-let ref;
-let uploadBytes;
-let getDownloadURL;
 let getAuth;
 let GoogleAuthProvider;
 let signInWithPopup;
@@ -29,7 +25,6 @@ const firebaseConfig = {
 };
 
 let db = null;
-let storage = null;
 let auth = null;
 let googleProvider = null;
 let firebaseReady = false;
@@ -74,7 +69,7 @@ const state = {
   isOnline: navigator.onLine !== false,
   editingAccount: false,
   pendingGoogleUser: load("mallem_pending_google", null),
-  register: { step: 1, role: "", data: {}, files: {} },
+  register: { step: 1, role: "", data: {} },
   filters: { city: "", job: "الكل", search: "" }
 };
 
@@ -139,12 +134,6 @@ document.addEventListener("input", (event) => {
   if (state.screen === "home") render();
 });
 
-document.addEventListener("change", (event) => {
-  const el = event.target;
-  if (!el.closest("#register-form") || el.type !== "file") return;
-  state.register.files[el.name] = el.files?.[0] || null;
-});
-
 document.addEventListener("submit", (event) => {
   event.preventDefault();
 });
@@ -191,20 +180,17 @@ async function initFirebase() {
   if (firebaseLoading) return firebaseLoading;
   firebaseLoading = (async () => {
     try {
-      const [appModule, firestoreModule, storageModule, authModule] = await Promise.all([
+      const [appModule, firestoreModule, authModule] = await Promise.all([
         import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
         import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"),
         import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js")
       ]);
       ({ initializeApp } = appModule);
       ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
-      ({ getStorage, ref, uploadBytes, getDownloadURL } = storageModule);
       ({ getAuth, GoogleAuthProvider, signInWithPopup, signOut } = authModule);
 
       const firebaseApp = initializeApp(firebaseConfig);
       db = getFirestore(firebaseApp);
-      storage = getStorage(firebaseApp);
       auth = getAuth(firebaseApp);
       googleProvider = new GoogleAuthProvider();
       googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -272,16 +258,16 @@ function registerStep() {
   if (state.register.step === 2) {
     return `
       <form id="register-form" class="form">
-        <div class="field"><label>Gmail</label><input value="${state.pendingGoogleUser?.email || val("email") || ""}" disabled></div>
-        <div class="field"><label>الإسم الكامل</label><input name="fullName" required value="${val("fullName")}" placeholder="الإسم والنسب" pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
+        <div class="field"><label>Gmail</label><input value="${esc(state.pendingGoogleUser?.email || val("email") || "")}" disabled></div>
+        <div class="field"><label>الإسم الكامل</label><input name="fullName" required value="${esc(val("fullName"))}" placeholder="الإسم والنسب" pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
         <div class="grid two">
-          <div class="field"><label>رقم الهاتف للتواصل</label><input name="phone" inputmode="tel" required value="${val("phone")}" placeholder="06XXXXXXXX"></div>
-          <div class="field"><label>المدينة</label><input name="city" list="cities" required value="${val("city")}" placeholder="بحث عن المدينة"></div>
+          <div class="field"><label>رقم الهاتف للتواصل</label><input name="phone" inputmode="tel" required value="${esc(val("phone"))}" placeholder="06XXXXXXXX"></div>
+          <div class="field"><label>المدينة</label><input name="city" list="cities" required value="${esc(val("city"))}" placeholder="بحث عن المدينة"></div>
         </div>
-        ${role === "pro" ? `<div class="field"><label>رقم واتساب</label><input name="whatsapp" inputmode="tel" required value="${val("whatsapp")}" placeholder="06XXXXXXXX"></div>` : ""}
+        ${role === "pro" ? `<div class="field"><label>رقم واتساب</label><input name="whatsapp" inputmode="tel" required value="${esc(val("whatsapp"))}" placeholder="06XXXXXXXX"></div>` : ""}
         ${role === "pro" ? `<div class="field"><label>الحرفة</label><select name="job" required>${JOBS.map(j => `<option ${val("job") === j ? "selected" : ""}>${j}</option>`).join("")}</select></div>` : ""}
         <datalist id="cities">${CITIES.map(city => `<option value="${city}"></option>`).join("")}</datalist>
-        <div class="field"><label>العنوان</label><input name="address" required value="${val("address")}" placeholder="الحي، الشارع" pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
+        <div class="field"><label>العنوان</label><input name="address" required value="${esc(val("address"))}" placeholder="الحي، الشارع" pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
         ${role === "pro" ? diplomaFields() : ""}
         <div class="actions">
           <button class="btn primary" type="button" data-action="next">متابعة</button>
@@ -301,8 +287,7 @@ function registerStep() {
   }
   return `
     <form id="register-form" class="form">
-      <div class="field"><label>صورة الملف الشخصي</label><input name="avatarFile" type="file" accept="image/*"></div>
-      <p class="muted small">يمكن تخلي الصورة فارغة وتبدلها من الحساب من بعد.</p>
+      <div class="empty">جاهز تبدأ؟ صورة Gmail ديالك غادي تبان كبروفايل إن كانت متوفرة. ما كاينش رفع صور فالمنصة.</div>
       <button class="btn green" type="button" data-action="saveRegister">بدء الاستخدام</button>
       <button class="btn ghost" type="button" data-action="back">رجوع</button>
     </form>`;
@@ -315,15 +300,11 @@ function diplomaFields() {
       <input name="hasDiploma" type="checkbox" ${checked ? "checked" : ""}>
       <span>أنا أملك شهادة ديبلوم</span>
     </label>
-    <div class="field">
-      <label>صورة الديبلوم</label>
-      <input name="diplomaFile" type="file" accept="image/*,.pdf">
-      <small class="muted">إلى فعلت خيار الديبلوم، رفع الصورة والموافقة على الشروط ضروريين.</small>
-    </div>
     <label class="checkbox">
       <input name="terms" type="checkbox" ${val("terms") ? "checked" : ""}>
       <span>أوافق على ظهور معلوماتي المهنية وموقعي التقريبي لمستخدمي المنصة.</span>
-    </label>`;
+    </label>
+    <small class="muted">إلى فعلت خيار الديبلوم، الموافقة على الشروط ضرورية.</small>`;
 }
 
 function renderPrivate() {
@@ -384,8 +365,8 @@ function homePage() {
       </section>
       <section class="panel">
         <div class="searchbar">
-          <div class="field"><label>بحث</label><input name="search" value="${state.filters.search}" placeholder="إسم، حرفة، حي..."></div>
-          <div class="field"><label>المدينة</label><input name="cityFilter" list="cities2" value="${state.filters.city}" placeholder="اختار المدينة"></div>
+          <div class="field"><label>بحث</label><input name="search" value="${esc(state.filters.search)}" placeholder="إسم، حرفة، حي..."></div>
+          <div class="field"><label>المدينة</label><input name="cityFilter" list="cities2" value="${esc(state.filters.city)}" placeholder="اختار المدينة"></div>
           <div class="field"><label>الحرفة</label><select onchange="window.__setJob(this.value)">${["الكل", ...JOBS].map(j => `<option ${state.filters.job === j ? "selected" : ""}>${j}</option>`).join("")}</select></div>
           <button class="btn ghost" data-action="clearFilters">مسح</button>
         </div>
@@ -405,26 +386,27 @@ window.__setJob = (job) => { state.filters.job = job; render(); };
 
 function proCard(pro) {
   const fav = state.favorites.includes(pro.id);
+  const name = displayName(pro);
   return `
     <article class="card pro-card lift">
       <div class="pro-head">
-        ${pro.avatarUrl ? `<img class="avatar" src="${pro.avatarUrl}" alt="${displayName(pro)}">` : `<div class="avatar">${displayName(pro)[0] || "م"}</div>`}
+        ${pro.avatarUrl ? `<img class="avatar" src="${esc(pro.avatarUrl)}" alt="${esc(name)}">` : `<div class="avatar">${esc(name[0] || "م")}</div>`}
         <div>
-          <strong>${displayName(pro)}</strong>
-          <div class="muted small">${pro.job || "حرفي"} في ${pro.city || "غير محدد"}</div>
+          <strong>${esc(name)}</strong>
+          <div class="muted small">${esc(pro.job || "حرفي")} في ${esc(pro.city || "غير محدد")}</div>
         </div>
       </div>
       <div class="meta">
-        <span>★ ${pro.rating || "جديد"}</span>
-        <span>${pro.address || ""}</span>
-        ${pro.hasDiploma ? `<span class="badge">معتمد (قيد المراجعة)</span>` : `<span class="badge badge-warn">حرفي تقليدي</span>`}
+        <span>★ ${esc(pro.rating || "جديد")}</span>
+        <span>${esc(pro.address || "")}</span>
+        ${pro.hasDiploma ? `<span class="badge">موثق بالديبلوم</span>` : `<span class="badge badge-warn">حرفي عادي</span>`}
       </div>
       <div class="card-actions">
-        <button class="btn primary" data-action="call" data-id="${pro.id}" data-value="${pro.phone}">اتصال</button>
-        <button class="btn green" data-action="whatsapp" data-id="${pro.id}" data-value="${pro.whatsapp || pro.phone}">واتساب</button>
-        <button class="btn icon light" data-action="toggleFav" data-id="${pro.id}">${fav ? "♥" : "♡"}</button>
+        <button class="btn primary" data-action="call" data-id="${esc(pro.id)}" data-value="${esc(pro.phone)}">اتصال</button>
+        <button class="btn green" data-action="whatsapp" data-id="${esc(pro.id)}" data-value="${esc(pro.whatsapp || pro.phone)}">واتساب</button>
+        <button class="btn icon light" data-action="toggleFav" data-id="${esc(pro.id)}">${fav ? "♥" : "♡"}</button>
       </div>
-      ${state.user?.role === "client" ? `<button class="btn ghost" data-action="request" data-id="${pro.id}">إرسال طلب</button>` : ""}
+      ${state.user?.role === "client" ? `<button class="btn ghost" data-action="request" data-id="${esc(pro.id)}">إرسال طلب</button>` : ""}
     </article>`;
 }
 
@@ -449,9 +431,9 @@ function requestsPage() {
       <h2 class="section-title">الطلبات</h2>
       ${myRequests.length ? myRequests.map(r => `
         <article class="panel lift request-card">
-          <strong>${r.clientName}</strong>
-          <p class="muted">رقم الهاتف: ${r.clientPhone}</p>
-          <p>طلب خدمة ${r.job} في ${r.city}</p>
+          <strong>${esc(r.clientName)}</strong>
+          <p class="muted">رقم الهاتف: ${esc(r.clientPhone)}</p>
+          <p>طلب خدمة ${esc(r.job)} في ${esc(r.city)}</p>
           <div class="field">
             <label>الملاحظات</label>
             <textarea name="requestNote:${r.id}" placeholder="زيد أي ملاحظة على هاد الطلب...">${escapeHtml(r.note || "")}</textarea>
@@ -466,7 +448,7 @@ function notesPage() {
     <main class="page fade-in">
       <section class="panel form">
         <h2 class="section-title">دفتر الملاحظات</h2>
-        <div class="field"><textarea name="notes" placeholder="كتب أي ملاحظة بغيتي تحفظها...">${state.notes}</textarea></div>
+        <div class="field"><textarea name="notes" placeholder="كتب أي ملاحظة بغيتي تحفظها...">${esc(state.notes)}</textarea></div>
         <button class="btn primary" data-action="saveNotes">حفظ الملاحظات</button>
       </section>
     </main>`;
@@ -492,35 +474,37 @@ function accountPage() {
 }
 
 function accountInfo(u) {
+  const name = displayName(u);
   return `
     <div class="profile-head">
-      ${u.avatarUrl ? `<img class="avatar big" src="${u.avatarUrl}" alt="${displayName(u)}">` : `<div class="avatar big">${displayName(u)[0] || "م"}</div>`}
+      ${u.avatarUrl ? `<img class="avatar big" src="${esc(u.avatarUrl)}" alt="${esc(name)}">` : `<div class="avatar big">${esc(name[0] || "م")}</div>`}
       <div>
-        <strong>${displayName(u)}</strong>
-        <p class="muted">${u.email || ""}</p>
-        <p class="muted">${u.role === "pro" ? "حرفي" : "زبون"} ${u.job ? `- ${u.job}` : ""}</p>
+        <strong>${esc(name)}</strong>
+        <p class="muted">${esc(u.email || "")}</p>
+        <p class="muted">${u.role === "pro" ? "حرفي" : "زبون"} ${u.job ? `- ${esc(u.job)}` : ""}</p>
       </div>
     </div>
     <div class="info-list">
-      <p><span>الهاتف:</span> ${u.phone || "غير محدد"}</p>
-      ${u.role === "pro" ? `<p><span>واتساب:</span> ${u.whatsapp || "غير محدد"}</p>` : ""}
-      <p><span>المدينة:</span> ${u.city || "غير محددة"}</p>
-      <p><span>العنوان:</span> ${u.address || "غير محدد"}</p>
+      <p><span>الهاتف:</span> ${esc(u.phone || "غير محدد")}</p>
+      ${u.role === "pro" ? `<p><span>واتساب:</span> ${esc(u.whatsapp || "غير محدد")}</p>` : ""}
+      <p><span>المدينة:</span> ${esc(u.city || "غير محددة")}</p>
+      <p><span>العنوان:</span> ${esc(u.address || "غير محدد")}</p>
       ${u.role === "pro" ? `<p><span>التوثيق:</span> ${u.hasDiploma ? "موثق بديبلوم" : "حرفي بدون ديبلوم"}</p>` : ""}
     </div>`;
 }
 
 function accountForm(u) {
+  const name = displayName(u);
   return `
     <form id="account-form" class="form">
-      <div class="field"><label>الإسم الكامل</label><input name="fullName" value="${displayName(u)}" required pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
-      <div class="field"><label>Gmail</label><input value="${u.email || ""}" disabled><small class="muted">Gmail هو هوية الحساب.</small></div>
-      <div class="field"><label>رقم الهاتف للتواصل</label><input name="phone" value="${u.phone || ""}" inputmode="tel" required></div>
-      ${u.role === "pro" ? `<div class="field"><label>رقم واتساب</label><input name="whatsapp" value="${u.whatsapp || ""}" inputmode="tel"></div>
+      <div class="field"><label>الإسم الكامل</label><input name="fullName" value="${esc(name)}" required pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
+      <div class="field"><label>Gmail</label><input value="${esc(u.email || "")}" disabled><small class="muted">Gmail هو هوية الحساب.</small></div>
+      <div class="field"><label>رقم الهاتف للتواصل</label><input name="phone" value="${esc(u.phone || "")}" inputmode="tel" required></div>
+      ${u.role === "pro" ? `<div class="field"><label>رقم واتساب</label><input name="whatsapp" value="${esc(u.whatsapp || "")}" inputmode="tel"></div>
       <div class="field"><label>الحرفة</label><select name="job">${JOBS.map(j => `<option ${u.job === j ? "selected" : ""}>${j}</option>`).join("")}</select></div>` : ""}
-      <div class="field"><label>المدينة</label><input name="city" list="account-cities" value="${u.city || ""}" required></div>
+      <div class="field"><label>المدينة</label><input name="city" list="account-cities" value="${esc(u.city || "")}" required></div>
       <datalist id="account-cities">${CITIES.map(city => `<option value="${city}"></option>`).join("")}</datalist>
-      <div class="field"><label>العنوان</label><input name="address" value="${u.address || ""}" required pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
+      <div class="field"><label>العنوان</label><input name="address" value="${esc(u.address || "")}" required pattern="${ARABIC_INPUT_PATTERN}" title="كتب بالعربية فقط"></div>
       <div class="actions inline">
         <button class="btn primary" type="button" data-action="saveAccount">حفظ التعديلات</button>
         <button class="btn ghost" type="button" data-action="cancelEdit">إلغاء</button>
@@ -539,8 +523,7 @@ function startRegister() {
     data: {
       fullName: state.pendingGoogleUser.displayName || "",
       email: state.pendingGoogleUser.email || ""
-    },
-    files: {}
+    }
   };
   setScreen("register");
 }
@@ -574,7 +557,7 @@ async function loginWithGoogle() {
     }
     state.pendingGoogleUser = googleUser;
     save("mallem_pending_google", googleUser);
-    state.register = { step: 1, role: "", data: { fullName: googleUser.fullName, email: googleUser.email }, files: {} };
+    state.register = { step: 1, role: "", data: { fullName: googleUser.fullName, email: googleUser.email } };
     toast("كمل معلومات الحساب ديالك.");
     setScreen("register");
   } catch (error) {
@@ -594,28 +577,30 @@ function backStep() {
   render();
 }
 
-function validateStep() {
+function validateRegisterData() {
   const d = state.register.data;
-  if (state.register.step === 1 && !state.register.role) return fail("اختار واش أنت زبون ولا حرفي.");
-  if (state.register.step === 2) {
-    if (!d.fullName || !d.phone || !d.city || !d.address) return fail("كمل جميع المعلومات الضرورية.");
-    if (!validateArabicFields(d, ["fullName", "address"])) return false;
-    if (!CITIES.includes(d.city)) return fail("اختار مدينة من لائحة مدن المغرب.");
-    if (state.register.role === "pro") {
-      if (!d.whatsapp || !d.job) return fail("كمل معلومات الحرفي.");
-      if ((d.hasDiploma === true || d.hasDiploma === "on") && !state.register.files.diplomaFile) return fail("رفع صورة الديبلوم ضروري.");
-      if ((d.hasDiploma === true || d.hasDiploma === "on") && !d.terms) return fail("خاصك توافق على الشروط.");
-    }
+  if (!state.register.role) return fail("اختار واش أنت زبون ولا حرفي.");
+  if (!d.fullName || !d.phone || !d.city || !d.address) return fail("كمل جميع المعلومات الضرورية.");
+  if (!validateArabicFields(d, ["fullName", "address"])) return false;
+  if (!CITIES.includes(d.city)) return fail("اختار مدينة من لائحة مدن المغرب.");
+  if (state.register.role === "pro") {
+    if (!d.whatsapp || !d.job) return fail("كمل معلومات الحرفي.");
+    if ((d.hasDiploma === true || d.hasDiploma === "on") && !d.terms) return fail("خاصك توافق على الشروط.");
   }
+  return true;
+}
+
+function validateStep() {
+  if (state.register.step === 1 && !state.register.role) return fail("اختار واش أنت زبون ولا حرفي.");
+  if (state.register.step === 2) return validateRegisterData();
   return true;
 }
 
 async function saveRegister() {
   await syncUsers();
-  if (!validateStep()) return;
+  if (!validateRegisterData()) return;
   if (!state.pendingGoogleUser?.email) return fail("دخل بواسطة Gmail أولا.");
   if (findUserByEmail(state.pendingGoogleUser.email)) return existingAccount();
-  
   const data = normalizeUser({
     ...state.register.data,
     role: state.register.role,
@@ -623,101 +608,18 @@ async function saveRegister() {
     googleUid: state.pendingGoogleUser.googleUid,
     avatarUrl: state.pendingGoogleUser.avatarUrl || state.register.data.avatarUrl
   });
-  
   data.id = crypto.randomUUID();
   data.createdAt = new Date().toISOString();
   data.hasDiploma = data.hasDiploma === true || data.hasDiploma === "on";
-  if (data.role === "pro") {
-    data.rating = 4.5;
-  }
+  data.rating = data.role === "pro" ? 4.5 : undefined;
 
-  // 1. محاولة رفع الصورة الشخصية (إلا فشلات كيمشي عادي بلا ما يتبلوكا)
-  try {
-    if (state.register.files.avatarFile) {
-      data.avatarUrl = await uploadFile(
-        `avatars/${data.id}-${state.register.files.avatarFile.name}`,
-        state.register.files.avatarFile
-      );
-    }
-  } catch (e) {
-    console.error("Avatar upload failed:", e);
-  }
-
-  // 2. تخطي رفع ملف التوثيق لـ Storage لمنع البلوكاج و CORS، مع الاحتفاظ بـ hasDiploma
-  try {
-    if (state.register.files.diplomaFile) {
-      console.log("Diploma file detected. Skipping upload bytes to prevent CORS/freeze, retaining database record.");
-      // هنا خلينا الواجهة تجبره يختار الصورة، ولكن الكود كيتخطى الرفع الفعلي لـ Firebase Storage
-      data.diplomaUrl = "pending_admin_dashboard_version"; 
-    }
-  } catch (e) {
-    console.error("Diploma setup failed:", e);
-  }
-
-  // 3. الحفظ الفعلي والنهائي في قاعدة البيانات Firestore
   try {
     const remote = await addRemote("users", data);
-
-    if (!remote?.id) {
-      throw new Error("User was not saved to Firestore");
-    }
-
-    data.docId = remote.id;
+    data.docId = remote?.id || data.docId;
   } catch (error) {
-    console.error("Firebase error:", error);
-    toast("فشل إنشاء الحساب في Firebase");
-    return; // يوقف هنا وميحفظش فاللوكال كذب
+    console.warn(error);
+    toast("تعذر الحفظ في Firebase، غادي يتحفظ محليا مؤقتا.");
   }
-
-  // 4. كمل الحفظ محلياً وتوجيه المستخدم للرئيسية بعد النجاح في Firebase
-  state.users.push(data);
-  save("mallem_users", state.users);
-  state.user = data;
-  save("mallem_user", data);
-  state.pendingGoogleUser = null;
-  remove("mallem_pending_google");
-  toast("تم إنشاء الحساب بنجاح.");
-  setScreen("home");
-}
-
- 
-
-  try {
-    if (state.register.files.avatarFile) {
-      data.avatarUrl = await uploadFile(
-        `avatars/${data.id}-${state.register.files.avatarFile.name}`,
-        state.register.files.avatarFile
-      );
-    }
-  } catch (e) {
-    console.error("Avatar upload failed:", e);
-  }
-
-  try {
-    /*
-     if (state.register.files.diplomaFile)
-     data.diplomaUrl = await uploadFile(
-     `diplomas/${data.id}-${state.register.files.diplomaFile.name}`,
-     state.register.files.diplomaFile
-     );
-   */
-  } catch (e) {
-    console.error("Diploma upload failed:", e);
-  }
-
-  const remote = await addRemote("users", data);
-
-  if (!remote?.id) {
-    throw new Error("User was not saved to Firestore");
-  }
-
-  data.docId = remote.id;
- try {
- } catch (error) {
-  console.error("Firebase error:", error);
-  toast("فشل إنشاء الحساب في Firebase");
-  return;
-}
 
   state.users.push(data);
   save("mallem_users", state.users);
@@ -828,7 +730,11 @@ async function createRequest(id) {
   state.history = [id, ...state.history.filter(x => x !== id)].slice(0, 30);
   save("mallem_requests", state.requests);
   save("mallem_history", state.history);
-  try { await addRemote("requests", request); } catch (error) { console.warn(error); }
+  try {
+    const remote = await addRemote("requests", request);
+    request.docId = remote?.id || request.docId;
+    save("mallem_requests", state.requests);
+  } catch (error) { console.warn(error); }
   toast("تم إرسال الطلب للحرفي.");
   render();
 }
@@ -842,12 +748,22 @@ function updateRequestNoteDraft(id, note) {
   state.requests = state.requests.map(request => request.id === id ? { ...request, note } : request);
 }
 
-function saveRequestNote(id) {
+async function saveRequestNote(id) {
   const field = [...document.querySelectorAll("textarea[name^='requestNote:']")].find(item => item.name === `requestNote:${id}`);
   const note = field?.value || "";
   updateRequestNoteDraft(id, note);
   save("mallem_requests", state.requests);
-  toast("تحفظات ملاحظات الطلب فالجهاز.");
+  const request = state.requests.find(item => item.id === id);
+  if (request?.docId && db) {
+    try {
+      await updateDoc(doc(db, "requests", request.docId), { note });
+    } catch (error) {
+      console.warn(error);
+      toast("تحفظات الملاحظات محليا. تعذر الحفظ فـ Firebase.");
+      return;
+    }
+  }
+  toast("تحفظات ملاحظات الطلب.");
 }
 
 async function syncUsers() {
@@ -875,20 +791,29 @@ async function persistUser(user) {
   state.users = state.users.map(u => (u.id === normalized.id || u.email === normalized.email || u.googleUid === normalized.googleUid) ? normalized : u);
   save("mallem_users", state.users);
   if (!db) return;
+  const payload = forFirestore(normalized);
   if (normalized.docId) {
-    await updateDoc(doc(db, "users", normalized.docId), normalized);
+    await updateDoc(doc(db, "users", normalized.docId), payload);
+    syncCurrentUserRecord(normalized);
     return;
   }
   const remote = await findRemoteUser(normalized.email);
   if (remote) {
     normalized.docId = remote.id;
-    await updateDoc(doc(db, "users", remote.id), normalized);
+    await updateDoc(doc(db, "users", remote.id), payload);
+    syncCurrentUserRecord(normalized);
+    return;
   }
+  const created = await addRemote("users", normalized);
+  normalized.docId = created?.id;
+  state.users = state.users.map(u => (u.id === normalized.id || u.email === normalized.email || u.googleUid === normalized.googleUid) ? normalized : u);
+  save("mallem_users", state.users);
+  syncCurrentUserRecord(normalized);
 }
 
 async function addRemote(name, data) {
   if (!db) throw new Error("Firestore is not available.");
-  return addDoc(collection(db, name), { ...data, serverCreatedAt: serverTimestamp() });
+  return addDoc(collection(db, name), { ...forFirestore(data), serverCreatedAt: serverTimestamp() });
 }
 
 async function findRemoteUser(email) {
@@ -905,13 +830,6 @@ async function deleteRemoteUser(user) {
   }
   const snapshot = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
   await Promise.all(snapshot.docs.map(item => deleteDoc(doc(db, "users", item.id))));
-}
-
-async function uploadFile(path, file) {
-  if (!storage) throw new Error("Storage is not available.");
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
 }
 
 function existingAccount() {
@@ -983,6 +901,25 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function esc(value) {
+  return escapeHtml(value);
+}
+
+function forFirestore(data) {
+  const out = {};
+  for (const [key, value] of Object.entries(data || {})) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+
+function syncCurrentUserRecord(user) {
+  if (!state.user || !user) return;
+  if (state.user.id !== user.id && normalizeEmail(state.user.email) !== normalizeEmail(user.email) && state.user.googleUid !== user.googleUid) return;
+  state.user = user;
+  save("mallem_user", user);
 }
 
 function setScreen(screen) {
