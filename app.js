@@ -287,7 +287,7 @@ function registerStep() {
   }
   return `
     <form id="register-form" class="form">
-      <div class="empty">جاهز تبدأ؟ صورة Gmail ديالك غادي تبان كبروفايل إن كانت متوفرة. ما كاينش رفع صور فالمنصة.</div>
+      <div class="empty">جاهز تبدأ؟ صورة gmail ديالك هاتبان كبروفايل (إلى غاية الإصدار الثاني).</div>
       <button class="btn green" type="button" data-action="saveRegister">بدء الاستخدام</button>
       <button class="btn ghost" type="button" data-action="back">رجوع</button>
     </form>`;
