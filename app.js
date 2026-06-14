@@ -147,12 +147,12 @@ async function init() {
   bindNetworkStatus();
   render();
   if (!state.isOnline) toast("ما كاينش اتصال إنترنت. تقدر تستعمل المعلومات المحفوظة فالجهاز.");
-  initFirebase().then(async (ready) => {
-    if (ready) {
-      await handleGoogleRedirectResult();
-      syncUsers().then(() => render());
-    }
-  });
+  const ready = await initFirebase();
+  if (ready) {
+    await handleGoogleRedirectResult();
+    await syncUsers();
+    render();
+  }
 }
 
 function registerOfflineCache() {
@@ -166,11 +166,8 @@ function bindNetworkStatus() {
   window.addEventListener("online", () => {
     state.isOnline = true;
     toast("رجع الاتصال بالإنترنت.");
-    initFirebase().then(async (ready) => {
-      if (ready) {
-        await handleGoogleRedirectResult();
-        syncUsers().then(() => render());
-      }
+    initFirebase().then((ready) => {
+      if (ready) syncUsers().then(() => render());
     });
     render();
   });
@@ -194,13 +191,7 @@ async function initFirebase() {
       ]);
       ({ initializeApp } = appModule);
       ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
-      ({
-         getAuth,
-         GoogleAuthProvider,
-         signInWithRedirect,
-         getRedirectResult,
-         signOut
-       } = authModule);
+      ({ getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } = authModule);
 
       const firebaseApp = initializeApp(firebaseConfig);
       db = getFirestore(firebaseApp);
@@ -551,6 +542,7 @@ async function loginWithGoogle() {
   if (!auth || !googleProvider) return fail("Firebase Auth ما متصلش. تأكد من إعدادات Firebase.");
   try {
     await signInWithRedirect(auth, googleProvider);
+    return;
   } catch (error) {
     console.error(error);
     fail(googleAuthErrorMessage(error));
@@ -562,7 +554,7 @@ async function handleGoogleRedirectResult() {
   if (!auth) return;
   try {
     const result = await getRedirectResult(auth);
-    if (!result) return;
+    if (!result || !result.user) return;
 
     const googleUser = {
       googleUid: result.user.uid,
@@ -573,7 +565,6 @@ async function handleGoogleRedirectResult() {
 
     await syncUsers();
     const existing = findUserByEmail(googleUser.email) || state.users.find(u => u.googleUid === googleUser.googleUid);
-
     if (existing) {
       const merged = normalizeUser({
         ...existing,
