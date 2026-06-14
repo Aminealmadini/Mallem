@@ -11,7 +11,8 @@ let where;
 let serverTimestamp;
 let getAuth;
 let GoogleAuthProvider;
-let signInWithPopup;
+let signInWithRedirect;
+let getRedirectResult;
 let signOut;
 
 const firebaseConfig = {
@@ -146,8 +147,11 @@ async function init() {
   bindNetworkStatus();
   render();
   if (!state.isOnline) toast("ما كاينش اتصال إنترنت. تقدر تستعمل المعلومات المحفوظة فالجهاز.");
-  initFirebase().then((ready) => {
-    if (ready) syncUsers().then(() => render());
+  initFirebase().then(async (ready) => {
+    if (ready) {
+      await handleGoogleRedirectResult();
+      syncUsers().then(() => render());
+    }
   });
 }
 
@@ -162,8 +166,11 @@ function bindNetworkStatus() {
   window.addEventListener("online", () => {
     state.isOnline = true;
     toast("رجع الاتصال بالإنترنت.");
-    initFirebase().then((ready) => {
-      if (ready) syncUsers().then(() => render());
+    initFirebase().then(async (ready) => {
+      if (ready) {
+        await handleGoogleRedirectResult();
+        syncUsers().then(() => render());
+      }
     });
     render();
   });
@@ -187,7 +194,13 @@ async function initFirebase() {
       ]);
       ({ initializeApp } = appModule);
       ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
-      ({ getAuth, GoogleAuthProvider, signInWithPopup, signOut } = authModule);
+      ({
+         getAuth,
+         GoogleAuthProvider,
+         signInWithRedirect,
+         getRedirectResult,
+         signOut
+       } = authModule);
 
       const firebaseApp = initializeApp(firebaseConfig);
       db = getFirestore(firebaseApp);
@@ -537,17 +550,37 @@ async function loginWithGoogle() {
   await initFirebase();
   if (!auth || !googleProvider) return fail("Firebase Auth ما متصلش. تأكد من إعدادات Firebase.");
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    await signInWithRedirect(auth, googleProvider);
+  } catch (error) {
+    console.error(error);
+    fail(googleAuthErrorMessage(error));
+  }
+}
+
+async function handleGoogleRedirectResult() {
+  await initFirebase();
+  if (!auth) return;
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return;
+
     const googleUser = {
       googleUid: result.user.uid,
       email: result.user.email || "",
       fullName: result.user.displayName || "",
       avatarUrl: result.user.photoURL || ""
     };
+
     await syncUsers();
     const existing = findUserByEmail(googleUser.email) || state.users.find(u => u.googleUid === googleUser.googleUid);
+
     if (existing) {
-      const merged = normalizeUser({ ...existing, googleUid: googleUser.googleUid, email: googleUser.email, avatarUrl: existing.avatarUrl || googleUser.avatarUrl });
+      const merged = normalizeUser({
+        ...existing,
+        googleUid: googleUser.googleUid,
+        email: googleUser.email,
+        avatarUrl: existing.avatarUrl || googleUser.avatarUrl
+      });
       state.user = merged;
       await persistUser(merged);
       save("mallem_user", merged);
@@ -555,13 +588,21 @@ async function loginWithGoogle() {
       setScreen("home");
       return;
     }
+
     state.pendingGoogleUser = googleUser;
     save("mallem_pending_google", googleUser);
-    state.register = { step: 1, role: "", data: { fullName: googleUser.fullName, email: googleUser.email } };
+    state.register = {
+      step: 1,
+      role: "",
+      data: {
+        fullName: googleUser.fullName,
+        email: googleUser.email
+      }
+    };
     toast("كمل معلومات الحساب ديالك.");
     setScreen("register");
   } catch (error) {
-    console.error(error);
+    console.error("Redirect login error:", error);
     fail(googleAuthErrorMessage(error));
   }
 }
