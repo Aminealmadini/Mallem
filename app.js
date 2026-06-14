@@ -304,7 +304,7 @@ function diplomaFields() {
       <input name="terms" type="checkbox" ${val("terms") ? "checked" : ""}>
       <span>أوافق على ظهور معلوماتي المهنية وموقعي التقريبي لمستخدمي المنصة.</span>
     </label>
-    <small class="muted">إلى فعلت خيار الديبلوم، الموافقة على الشروط ضرورية.</small>`;
+    <small class="muted">ملاحظة: باقي مازدناش ميزة التحقق من الديبلوم اللي هانضيفوها قريبا إن شاء الله, إلا حددتي "أملك ديبلوم" غادي تكون عليك علامة (قيد المراجعة) إلى غاية إضافة ميزة التحقق. الموافقة على الشروط و الأحكام ضروريين!</small>`;
 }
 
 function renderPrivate() {
@@ -399,7 +399,7 @@ function proCard(pro) {
       <div class="meta">
         <span>★ ${esc(pro.rating || "جديد")}</span>
         <span>${esc(pro.address || "")}</span>
-        ${pro.hasDiploma ? `<span class="badge">موثق بالديبلوم</span>` : `<span class="badge badge-warn">حرفي عادي</span>`}
+        ${pro.hasDiploma ? `<span class="badge">معتمد (قيد المراجعة)</span>` : `<span class="badge badge-warn">حرفي تقليدي</span>`}
       </div>
       <div class="card-actions">
         <button class="btn primary" data-action="call" data-id="${esc(pro.id)}" data-value="${esc(pro.phone)}">اتصال</button>
