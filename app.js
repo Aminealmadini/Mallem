@@ -12,6 +12,10 @@ let serverTimestamp;
 let getAuth;
 let GoogleAuthProvider;
 let signInWithPopup;
+let signInWithRedirect;
+let getRedirectResult;
+let setPersistence;
+let browserLocalPersistence;
 let signOut;
 
 const firebaseConfig = {
@@ -29,6 +33,7 @@ let auth = null;
 let googleProvider = null;
 let firebaseReady = false;
 let firebaseLoading = null;
+let googleRedirectHandled = false;
 
 const CITIES = [
   "الدار البيضاء","الرباط","فاس","مراكش","طنجة","أكادير","مكناس","وجدة","القنيطرة","تطوان","سلا","تمارة",
@@ -187,15 +192,19 @@ async function initFirebase() {
       ]);
       ({ initializeApp } = appModule);
       ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
-      ({ getAuth, GoogleAuthProvider, signInWithPopup, signOut } = authModule);
+      ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence, signOut } = authModule);
 
       const firebaseApp = initializeApp(firebaseConfig);
       db = getFirestore(firebaseApp);
       auth = getAuth(firebaseApp);
+      await setPersistence(auth, browserLocalPersistence).catch((error) => {
+        console.warn("Firebase auth persistence fallback is active.", error);
+      });
       googleProvider = new GoogleAuthProvider();
       googleProvider.setCustomParameters({ prompt: "select_account" });
       auth.languageCode = "ar";
       firebaseReady = true;
+      await handleGoogleRedirectResult();
       return true;
     } catch (error) {
       console.warn("Firebase unavailable, local mode is active.", error);
@@ -537,6 +546,11 @@ async function loginWithGoogle() {
   await initFirebase();
   if (!auth || !googleProvider) return fail("Firebase Auth ما متصلش. تأكد من إعدادات Firebase.");
   try {
+    if (shouldUseRedirectLogin()) {
+      save("mallem_google_auth_pending", "1");
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
     const result = await signInWithPopup(auth, googleProvider);
     const googleUser = {
       googleUid: result.user.uid,
@@ -564,6 +578,50 @@ async function loginWithGoogle() {
     console.error(error);
     fail(googleAuthErrorMessage(error));
   }
+}
+
+async function handleGoogleRedirectResult() {
+  if (googleRedirectHandled || !auth || !getRedirectResult) return;
+  googleRedirectHandled = true;
+  try {
+    const result = await getRedirectResult(auth);
+    remove("mallem_google_auth_pending");
+    if (!result?.user) return;
+    const googleUser = {
+      googleUid: result.user.uid,
+      email: result.user.email || "",
+      fullName: result.user.displayName || "",
+      avatarUrl: result.user.photoURL || ""
+    };
+    await syncUsers();
+    const existing = findUserByEmail(googleUser.email) || state.users.find(u => u.googleUid === googleUser.googleUid);
+    if (existing) {
+      const merged = normalizeUser({ ...existing, googleUid: googleUser.googleUid, email: googleUser.email, avatarUrl: existing.avatarUrl || googleUser.avatarUrl });
+      state.user = merged;
+      await persistUser(merged);
+      save("mallem_user", merged);
+      toast("مرحبا بك.");
+      setScreen("home");
+      return;
+    }
+    state.pendingGoogleUser = googleUser;
+    save("mallem_pending_google", googleUser);
+    state.register = { step: 1, role: "", data: { fullName: googleUser.fullName, email: googleUser.email } };
+    toast("كمل معلومات الحساب ديالك.");
+    setScreen("register");
+  } catch (error) {
+    remove("mallem_google_auth_pending");
+    console.error(error);
+    fail(googleAuthErrorMessage(error));
+  }
+}
+
+function shouldUseRedirectLogin() {
+  const ua = navigator.userAgent || "";
+  const isAndroidWebView = /\bwv\b|; wv\)/i.test(ua);
+  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
+  const pendingRedirect = load("mallem_google_auth_pending", "") === "1";
+  return isAndroidWebView || isStandalone || pendingRedirect;
 }
 
 async function nextStep() {
