@@ -1,25 +1,18 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  getDocs,
-  query,
-  updateDoc,
-  where,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+let initializeApp;
+let getFirestore;
+let collection;
+let addDoc;
+let deleteDoc;
+let doc;
+let getDocs;
+let query;
+let updateDoc;
+let where;
+let serverTimestamp;
+let getAuth;
+let GoogleAuthProvider;
+let signInWithPopup;
+let signOut;
 
 const firebaseConfig = {
   apiKey: "AIzaSyDEf4NV_vg8GYX0IhvdNouT4PR2orhD3So",
@@ -153,12 +146,9 @@ async function init() {
   bindNetworkStatus();
   render();
   if (!state.isOnline) toast("ما كاينش اتصال إنترنت. تقدر تستعمل المعلومات المحفوظة فالجهاز.");
-  const ready = await initFirebase();
-  if (ready) {
-    await handleGoogleRedirectResult();
-    await syncUsers();
-    render();
-  }
+  initFirebase().then((ready) => {
+    if (ready) syncUsers().then(() => render());
+  });
 }
 
 function registerOfflineCache() {
@@ -186,25 +176,34 @@ function bindNetworkStatus() {
 
 async function initFirebase() {
   if (firebaseReady) return true;
+  if (!state.isOnline) return false;
+  if (firebaseLoading) return firebaseLoading;
+  firebaseLoading = (async () => {
+    try {
+      const [appModule, firestoreModule, authModule] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js")
+      ]);
+      ({ initializeApp } = appModule);
+      ({ getFirestore, collection, addDoc, deleteDoc, doc, getDocs, query, updateDoc, where, serverTimestamp } = firestoreModule);
+      ({ getAuth, GoogleAuthProvider, signInWithPopup, signOut } = authModule);
 
-  try {
-    const firebaseApp = initializeApp(firebaseConfig);
-    db = getFirestore(firebaseApp);
-    auth = getAuth(firebaseApp);
-    googleProvider = new GoogleAuthProvider();
-
-    googleProvider.setCustomParameters({
-      prompt: "select_account"
-    });
-
-    auth.languageCode = "ar";
-    firebaseReady = true;
-
-    return true;
-  } catch (error) {
-    console.warn("Firebase unavailable:", error);
-    return false;
-  }
+      const firebaseApp = initializeApp(firebaseConfig);
+      db = getFirestore(firebaseApp);
+      auth = getAuth(firebaseApp);
+      googleProvider = new GoogleAuthProvider();
+      googleProvider.setCustomParameters({ prompt: "select_account" });
+      auth.languageCode = "ar";
+      firebaseReady = true;
+      return true;
+    } catch (error) {
+      console.warn("Firebase unavailable, local mode is active.", error);
+      firebaseLoading = null;
+      return false;
+    }
+  })();
+  return firebaseLoading;
 }
 
 function render() {
@@ -538,37 +537,17 @@ async function loginWithGoogle() {
   await initFirebase();
   if (!auth || !googleProvider) return fail("Firebase Auth ما متصلش. تأكد من إعدادات Firebase.");
   try {
-    await signInWithRedirect(auth, googleProvider);
-    return;
-  } catch (error) {
-    console.error(error);
-    fail(googleAuthErrorMessage(error));
-  }
-}
-
-async function handleGoogleRedirectResult() {
-  await initFirebase();
-  if (!auth) return;
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result || !result.user) return;
-
+    const result = await signInWithPopup(auth, googleProvider);
     const googleUser = {
       googleUid: result.user.uid,
       email: result.user.email || "",
       fullName: result.user.displayName || "",
       avatarUrl: result.user.photoURL || ""
     };
-
     await syncUsers();
     const existing = findUserByEmail(googleUser.email) || state.users.find(u => u.googleUid === googleUser.googleUid);
     if (existing) {
-      const merged = normalizeUser({
-        ...existing,
-        googleUid: googleUser.googleUid,
-        email: googleUser.email,
-        avatarUrl: existing.avatarUrl || googleUser.avatarUrl
-      });
+      const merged = normalizeUser({ ...existing, googleUid: googleUser.googleUid, email: googleUser.email, avatarUrl: existing.avatarUrl || googleUser.avatarUrl });
       state.user = merged;
       await persistUser(merged);
       save("mallem_user", merged);
@@ -576,21 +555,13 @@ async function handleGoogleRedirectResult() {
       setScreen("home");
       return;
     }
-
     state.pendingGoogleUser = googleUser;
     save("mallem_pending_google", googleUser);
-    state.register = {
-      step: 1,
-      role: "",
-      data: {
-        fullName: googleUser.fullName,
-        email: googleUser.email
-      }
-    };
+    state.register = { step: 1, role: "", data: { fullName: googleUser.fullName, email: googleUser.email } };
     toast("كمل معلومات الحساب ديالك.");
     setScreen("register");
   } catch (error) {
-    console.error("Redirect login error:", error);
+    console.error(error);
     fail(googleAuthErrorMessage(error));
   }
 }
