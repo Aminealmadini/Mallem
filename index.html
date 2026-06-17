@@ -3,318 +3,385 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mallem - الصفحة الرئيسية</title>
+<title>Mallem</title>
 
 <style>
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family: Arial, sans-serif;
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
 }
 
 html{
-    scroll-behavior:smooth;
+scroll-behavior:smooth;
 }
 
 body{
-    background:#ffffff;
-    color:#222;
+background:
+radial-gradient(circle at top right,#ffffff 0%,#f8fbff 30%,#eef5ff 60%,#e6f0ff 100%);
+color:#111;
+overflow-x:hidden;
 }
 
-/* HEADER */
+/* NAVBAR */
 header{
-    width:100%;
-    background:linear-gradient(135deg,#1565c0,#1a237e);
-    padding:20px 8%;
-    position:fixed;
-    top:0;
-    z-index:1000;
-    box-shadow:0 5px 20px rgba(0,0,0,.15);
+position:fixed;
+top:18px;
+left:50%;
+transform:translateX(-50%);
+width:93%;
+z-index:999;
+padding:14px 25px;
+border-radius:35px;
+background:linear-gradient(
+135deg,
+rgba(255,255,255,.55),
+rgba(220,235,255,.45),
+rgba(26,35,126,.18)
+);
+backdrop-filter:blur(18px);
+border:1px solid rgba(255,255,255,.45);
+box-shadow:0 12px 35px rgba(21,101,192,.10);
 }
 
 .navbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
 .logo{
-    width:55px;
-    height:55px;
-    object-fit:contain;
+width:60px;
+height:60px;
+border-radius:50%;
+object-fit:cover;
+border:3px solid rgba(255,255,255,.7);
+box-shadow:0 8px 20px rgba(21,101,192,.20);
 }
 
+/* Desktop nav */
 nav{
-    display:flex;
-    gap:25px;
-    align-items:center;
+display:flex;
+align-items:center;
+gap:24px;
 }
 
 nav a{
-    color:white;
-    text-decoration:none;
-    font-size:17px;
-    transition:.3s;
+text-decoration:none;
+font-weight:600;
+color:#1a237e;
+transition:.3s;
 }
 
 nav a:hover{
-    opacity:.8;
+color:#1565c0;
 }
 
 .start-btn{
-    background:white;
-    color:#1a237e;
-    padding:10px 18px;
-    border-radius:30px;
-    font-weight:bold;
+padding:12px 20px;
+border-radius:30px;
+background:linear-gradient(135deg,#1565c0,#1a237e);
+color:white;
+box-shadow:0 8px 20px rgba(21,101,192,.25);
+}
+
+.menu-btn{
+display:none;
+font-size:30px;
+cursor:pointer;
+color:#1a237e;
 }
 
 /* HERO */
 .hero{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:140px 20px 60px;
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:140px 20px 60px;
 }
 
-.hero-container{
-    max-width:900px;
+.hero-box{
+max-width:900px;
+text-align:center;
 }
 
-.hero img{
-    width:130px;
-    margin-bottom:25px;
+.hero-logo{
+width:165px;
+height:165px;
+border-radius:50%;
+object-fit:cover;
+border:4px solid rgba(255,255,255,.9);
+box-shadow:0 25px 50px rgba(21,101,192,.18);
+margin-bottom:30px;
+animation:floatLogo 3s ease-in-out infinite;
 }
 
 .hero h1{
-    font-size:42px;
-    margin-bottom:20px;
-    color:#1a237e;
+font-size:58px;
+margin-bottom:20px;
+background:linear-gradient(135deg,#1565c0,#1a237e);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
 }
 
 .hero p{
-    font-size:19px;
-    color:#555;
-    line-height:1.9;
-    margin-bottom:35px;
+font-size:21px;
+line-height:2;
+color:#555;
+margin-bottom:35px;
+max-width:700px;
+margin-inline:auto;
 }
 
+/* BUTTONS */
 .buttons{
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    flex-wrap:wrap;
+display:flex;
+justify-content:center;
+gap:18px;
+flex-wrap:wrap;
 }
 
 .btn{
-    padding:14px 28px;
-    border:none;
-    border-radius:30px;
-    text-decoration:none;
-    font-size:16px;
-    font-weight:bold;
-    transition:.3s;
+padding:16px 30px;
+border-radius:40px;
+text-decoration:none;
+font-weight:bold;
+transition:.35s;
 }
 
 .primary{
-    background:linear-gradient(135deg,#1565c0,#1a237e);
-    color:white;
+background:linear-gradient(135deg,#1565c0,#1a237e);
+color:white;
+box-shadow:0 10px 30px rgba(21,101,192,.28);
 }
 
 .secondary{
-    border:2px solid #1a237e;
-    color:#1a237e;
-    background:white;
+background:rgba(255,255,255,.75);
+color:#1565c0;
+border:2px solid rgba(21,101,192,.18);
+backdrop-filter:blur(12px);
 }
 
 .btn:hover{
-    transform:translateY(-3px);
+transform:translateY(-5px);
 }
 
 /* SECTIONS */
 section{
-    padding:90px 8%;
+padding:100px 8%;
 }
 
 .section-title{
-    text-align:center;
-    margin-bottom:40px;
-    font-size:32px;
-    color:#1a237e;
+font-size:38px;
+text-align:center;
+margin-bottom:55px;
+color:#1a237e;
 }
 
 .cards{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-    gap:25px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:28px;
 }
 
 .card{
-    background:#fff;
-    padding:25px;
-    border-radius:20px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
-    transition:.3s;
+padding:30px;
+border-radius:28px;
+background:linear-gradient(
+145deg,
+rgba(255,255,255,.82),
+rgba(238,245,255,.72)
+);
+backdrop-filter:blur(15px);
+border:1px solid rgba(255,255,255,.6);
+box-shadow:0 12px 35px rgba(0,0,0,.05);
+transition:.35s;
 }
 
 .card:hover{
-    transform:translateY(-8px);
+transform:translateY(-8px);
+box-shadow:0 20px 40px rgba(21,101,192,.08);
 }
 
 .card h3{
-    margin-bottom:15px;
-    color:#1565c0;
+color:#1565c0;
+margin-bottom:15px;
 }
 
 .card p{
-    line-height:1.8;
-    color:#555;
-}
-
-/* ABOUT */
-.about{
-    background:#f8fbff;
-    border-radius:30px;
+line-height:1.9;
+color:#555;
 }
 
 /* FOOTER */
 footer{
-    background:linear-gradient(135deg,#1565c0,#1a237e);
-    color:white;
-    text-align:center;
-    padding:30px;
+width:93%;
+margin:30px auto;
+padding:28px;
+border-radius:35px;
+text-align:center;
+font-size:15px;
+font-weight:600;
+color:white;
+background:linear-gradient(
+135deg,
+rgba(21,101,192,.82),
+rgba(255,255,255,.28),
+rgba(26,35,126,.88)
+);
+backdrop-filter:blur(22px);
+border:1px solid rgba(255,255,255,.35);
+box-shadow:0 12px 30px rgba(21,101,192,.12);
+}
+
+/* ANIMATIONS */
+@keyframes menuFade{
+0%{
+opacity:0;
+transform:translateY(-20px) scale(.95);
+}
+100%{
+opacity:1;
+transform:translateY(0) scale(1);
+}
+}
+
+@keyframes floatLogo{
+0%,100%{
+transform:translateY(0);
+}
+50%{
+transform:translateY(-10px);
+}
 }
 
 /* MOBILE */
+@media(max-width:768px){
+
 .menu-btn{
-    display:none;
-    font-size:28px;
-    color:white;
-    cursor:pointer;
+display:block;
 }
 
-@media(max-width:768px){
-    nav{
-        position:absolute;
-        top:90px;
-        right:0;
-        width:100%;
-        background:#1a237e;
-        flex-direction:column;
-        padding:20px;
-        display:none;
-    }
+nav{
+position:absolute;
+top:88px;
+right:0;
+width:100%;
+padding:24px;
+border-radius:25px;
+display:flex;
+flex-direction:column;
+background:linear-gradient(
+135deg,
+rgba(255,255,255,.92),
+rgba(235,245,255,.88)
+);
+backdrop-filter:blur(18px);
+box-shadow:0 15px 35px rgba(0,0,0,.08);
 
-    nav.active{
-        display:flex;
-    }
+opacity:0;
+transform:translateY(-20px) scale(.96);
+pointer-events:none;
+transition:
+opacity .35s ease,
+transform .35s ease;
+}
 
-    .menu-btn{
-        display:block;
-    }
+nav.active{
+opacity:1;
+transform:translateY(0) scale(1);
+pointer-events:auto;
+animation:menuFade .35s ease;
+}
 
-    .hero h1{
-        font-size:30px;
-    }
+.hero h1{
+font-size:38px;
+}
 
-    .hero p{
-        font-size:16px;
-    }
+.hero p{
+font-size:17px;
+}
 }
 </style>
 </head>
 <body>
 
 <header>
-    <div class="navbar">
-        <img src="icon.png" class="logo">
+<div class="navbar">
 
-        <nav id="nav">
-            <a href="#about">المعلومات</a>
-            <a href="#home">الرئيسية</a>
-            <a href="main.html" class="start-btn">بدء الإستخدام</a>
-        </nav>
+<img src="icon.png" class="logo">
 
-        <div class="menu-btn" onclick="toggleMenu()">☰</div>
-    </div>
+<nav id="nav">
+<a href="#about" onclick="closeMenu()">المعلومات</a>
+<a href="#home" onclick="closeMenu()">الرئيسية</a>
+<a href="main.html" class="start-btn">بدء الإستخدام</a>
+</nav>
+
+<div class="menu-btn" onclick="toggleMenu()">☰</div>
+
+</div>
 </header>
 
 <section class="hero" id="home">
-    <div class="hero-container">
-        <img src="icon.png" alt="logo">
+<div class="hero-box">
 
-        <h1>مرحبا بك في منصة Mallem</h1>
+<img src="icon.png" class="hero-logo">
 
-        <p>
-            منصة متكاملة تربط بين المستخدمين والحرفيين بطريقة سهلة وسريعة.
-            اكتشف الخدمات، تواصل مع المهنيين، وابدأ تجربتك الآن.
-        </p>
+<h1>Mallem Platform</h1>
 
-        <div class="buttons">
-            <a href="main.html" class="btn primary">إبدأ الآن</a>
-            <a href="https://github.com/Aminealmadini/Mallem/releases/download/v1.0/Mallem.apk" download class="btn secondary">تنزيل التطبيق</a>
-        </div>
-    </div>
+<p>
+منصة حديثة تربطك بأفضل الحرفيين والخدمات المهنية
+بتجربة استخدام ذكية، تصميم أنيق، وسرعة عالية.
+</p>
+
+<div class="buttons">
+<a href="main.html" class="btn primary">إبدأ الآن</a>
+
+<a href="https://github.com/Aminealmadini/Mallem/releases/download/v1.0/Mallem.apk"
+class="btn secondary">
+تنزيل التطبيق
+</a>
+</div>
+
+</div>
 </section>
 
-<section id="about" class="about">
-    <h2 class="section-title">حول المنصة</h2>
+<section id="about">
+<h2 class="section-title">حول المنصة</h2>
 
-    <div class="cards">
-        <div class="card">
-            <h3>سهولة الإستعمال</h3>
-            <p>
-                واجهة بسيطة وسريعة الاستجابة على جميع الأجهزة.
-            </p>
-        </div>
+<div class="cards">
 
-        <div class="card">
-            <h3>خدمات متنوعة</h3>
-            <p>
-                الوصول إلى مختلف الحرفيين والخدمات المحلية بسهولة.
-            </p>
-        </div>
+<div class="card">
+<h3>حِرفي فـ ضغطة زر ⚡</h3>
+<p>بلا ما تضيع وقتك فـ الزنقة وتقلب. تلقى الصباغ، الكهربائي، النجار، وكل الحرفيين اللي محتاج ليهم واجدين لخدمتك فـ بلاصة واحدة.</p>
+</div>
 
-        <div class="card">
-            <h3>أمان وثقة</h3>
-            <p>
-                نظام موثوق لتسجيل الدخول والتعامل بين المستخدمين والمهنيين.
-            </p>
-        </div>
-    </div>
-</section>
+<div class="card">
+<h3>خدمتك متقونة ومضمونة 🎯</h3>
+<p>شوف تقييمات الناس وتجاربهم السابقة مع كل معلم قبل ما تختار، باش تضمن الجودة، المعاملة الزوينة، والثمن المناسب بلا مفاجآت.</p>
+</div>
 
-<section>
-    <h2 class="section-title">كيف تبدأ؟</h2>
+<div class="card">
+<h3>فرص جديدة لكل حرفي 💼</h3>
+<p>يلا كنتي حرفي، هادي هي فرصتك باش تكبر الخدمة ديالك، تبين شطارتك وحرافتك للناس، وتوصل لزبناء كثار فـ مدينتك بكل سهولة.</p>
+</div>
 
-    <div class="cards">
-        <div class="card">
-            <h3>1. تسجيل الدخول</h3>
-            <p>قم بإنشاء حسابك أو تسجيل الدخول بسهولة.</p>
-        </div>
-
-        <div class="card">
-            <h3>2. اختيار الخدمة</h3>
-            <p>ابحث عن الخدمة أو الحرفي المناسب لك.</p>
-        </div>
-
-        <div class="card">
-            <h3>3. البدء مباشرة</h3>
-            <p>تواصل وابدأ العمل بسرعة وبدون تعقيد.</p>
-        </div>
-    </div>
+</div>
 </section>
 
 <footer>
-    جميع الحقوق محفوظة © Mallem 2026
+جميع الحقوق محفوظة © Mallem 2026
 </footer>
 
 <script>
 function toggleMenu(){
-    document.getElementById("nav").classList.toggle("active");
+document.getElementById("nav").classList.toggle("active");
+}
+
+function closeMenu(){
+document.getElementById("nav").classList.remove("active");
 }
 </script>
 
